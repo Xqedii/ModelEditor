@@ -1,0 +1,258 @@
+command /me [<text>] [<text>]:
+	aliases: modeleditor
+	permission: *
+	permission message: &cYou don't have permission do use this command!
+	trigger:
+		if arg-1 is not set:
+			send ""
+			send " <##00f818>&lModel <##00f818>Editor"
+			send ""
+			send " <##00f818>/me spawn [item/block] &3- &7Spawn new cube"
+			send " <##00f818>/me type [item/block] &3- &7Set display type"
+			send " <##00f818>/me cmd [number] &3- &7Set custom model data"
+			send " <##00f818>/me toggle &3- &7Toggle model editor"
+			send ""
+		if arg-1 is "toggle":
+			if {ModelEditor::%player%} is true:
+				set {ModelEditor::%player%} to false
+				send "&cDisabled!"
+				play sound "entity.item.pickup" with pitch 1.5 for player
+			else:
+				set {ModelEditor::%player%} to true
+				send "&aEnabled!"
+				play sound "entity.item.pickup" with pitch 2 for player
+		if arg-1 is "type":
+			if arg-2 is not set:
+				send "&cType block or item name"
+				stop
+			set {_a} to targeted entity
+			loop all entities in radius 0.75 around {_a}:
+				set {_e} to loop-entity
+				if "%{_e}%" is "item display":
+					if arg-2 parsed as item is not set:
+						send "&cUnknown item data!"
+						stop
+					set display item of {_e} to arg-2 parsed as item
+					stop
+				if "%{_e}%" is "block display":
+					if arg-2 parsed as block data is not set:
+						send "&cUnknown block data!"
+						stop
+					set display block data of {_e} to arg-2 parsed as block data
+					stop
+				
+		if arg-1 is "spawn":
+			if arg-2 is not set:
+				send "&cSelect Item / Block"
+				stop
+			set {_loc} to location at player
+			set yaw of {_loc} to 0
+			set pitch of {_loc} to 0
+			if arg-2 is "item":
+				spawn item display at {_loc}:
+					set {_entity} to entity
+					set display item of entity to diamond sword
+					set {_loc} to location 0.5 under {_loc}
+			else:
+				spawn block display at {_loc}:
+					set {_entity} to entity
+					set display block data of entity to stone
+					set {_loc} to fixLoc({_loc})
+			spawn interaction at {_loc}:
+				set {_inter} to entity
+				set interaction height of entity to 1
+				set interaction width of entity to 1
+			set display scale of {_entity} to vector(1,1,1)
+
+every 1 tick:
+	add 1 to {GlobalColor}
+	if {GlobalColor} >= 60:
+		set {GlobalColor} to 1
+	loop all players:
+		if {ModelEditor::%loop-player%} is true:
+			if {ME::Status::%loop-player%} is not set:
+				delete {_a}
+				delete {_final}
+				set {_a} to loop-player's targeted interaction
+				if {_a} is set:
+					loop all entities in radius 0.75 around {_a}:
+						set {_e} to loop-entities-2
+						if {_e} is block display or item display:
+							set {_final} to {_e}
+					if {_final} is set:
+						if {ME::Target::%loop-player%} is not {_final}:
+							set glowing of {ME::Target::%loop-player%} to false
+						set {ME::Target::%loop-player%} to {_final}
+						set {_a::*} to color({GlobalColor})
+						if name of {_final} contains "Select-":
+							set display glow color override of {_final} to bukkitColor(100,255,255,255)
+						else:
+							set display glow color override of {_final} to bukkitColor(100,{_a::1},{_a::2},{_a::3})
+						set glowing of {_final} to true
+				else:
+					set glowing of {ME::Target::%loop-player%} to false
+					delete {ME::Target::%loop-player%}
+
+on right click on interaction:
+	if {ME::Target::%player%} is set:
+		set {_a::*} to name of {ME::Target::%player%} split at "-"
+		set {_direction} to {_a::2}
+		broadcast "%{_direction}%"
+		set {_types::*} to "Z" and "Y" and "X"
+		set {_colors::*} to blue concrete and lime concrete and red concrete
+		loop {ME::EditDisplay::%player%::%{_direction}%::*}:
+			set display item of loop-value to white concrete
+		loop {_types::*}:
+			if loop-value is not {_direction}:
+				loop {ME::EditDisplay::%player%::%loop-value-1%::*}:
+					set display item of loop-value-2 to {_colors::%loop-counter-1%}
+
+command /b21:
+	trigger:
+		showRot(location at player)
+command /b22:
+	trigger:
+		showLoc(location at player)
+command /b23:
+	trigger:
+		showSize(player, location at player)
+
+function showSize(player: player, loc: location):
+	set pitch of {_loc} to 0
+	set yaw of {_loc} to 0
+	set {_size} to 3
+	set {_saveloc} to {_loc}
+	set {_types::*} to "Z" and "Y" and "X"
+	spawn text display at location 0.125 under {_loc}:
+		set display billboard of entity to center
+		set display scale of entity to vector(0, 0, 0)
+		set display text of entity to colored "<##3e90ff>〇"
+		set display text background color of entity to bukkitColor(0,0,0,0)
+		sizeAnim(entity, 1, 1, 1)
+	set {_colors::*} to blue concrete and lime concrete and red concrete
+	loop 3 times:
+		set {_blockX} to {_saveloc}
+		remove 0.025/2 from x-coords of {_blockX}
+		remove 0.025/2 from y-coords of {_blockX}
+		remove 0.025/2 from z-coords of {_blockX}
+		loop 3 times:
+			set {_w%loop-value-2%} to 0.025
+			set {_w2%loop-value-2%} to {_size}/40
+		set {_w%loop-value%} to {_size}
+		set {_w2%loop-value%} to {_size}/20
+		set {_ints::*} to 3, 1, 2
+		set {_w2%{_ints::%loop-value%}%} to {_size}/20
+		add {_w1}/2 to x-coords of {_blockX}
+		add {_w2}/2 to y-coords of {_blockX}
+		add {_w3}/2 to z-coords of {_blockX}
+		spawn item display at {_loc}:
+			set {_e1} to entity
+			sizeAnim({_e1}, {_w1}, {_w2}, {_w3})
+			set display scale of entity to vector(0, 0, 0)
+			set display brightness of entity to displayBrightness(15, 15)
+		set display item of {_e1} to {_colors::%loop-value%}
+		spawn item display at {_blockX}:
+			set {_e2} to entity
+			sizeAnim({_e2}, {_w22}, {_w23}, {_w21}, 30)
+			set display scale of entity to vector(0, 0, 0)
+			set display brightness of entity to displayBrightness(15, 15)
+		set name of {_e2} to "Select-%{_types::%loop-value%}%"
+		spawn interaction at location 0.125 under {_blockX}:
+			set {_inter} to entity
+			set interaction height of entity to 0.25
+			set interaction width of entity to 0.25
+		set display item of {_e2} to {_colors::%loop-value%}
+		add {_e1} and {_e2} to {ME::EditDisplay::%{_player}%::%{_types::%loop-value%}%::*}
+
+function showRot(loc: location):
+	set pitch of {_loc} to 0
+	set yaw of {_loc} to 0
+	set {_saveloc} to {_loc}
+	set {_colors::*} to blue concrete and lime concrete and red concrete
+	set {_size} to 4
+	loop 3 times:
+		add 1 to {_a}
+		if {_a} is 1:
+			loop 36 times:
+				set yaw of {_loc} to (360/36)*loop-value-2
+				spawn item display at location 0.5*{_size} in front of {_loc}:
+					set {_e} to entity
+					set display scale of entity to vector(0, 0, 0)
+					set display brightness of entity to displayBrightness(15, 15)
+				sizeAnim({_e}, 0.09*{_size}, 0.025, 0.025, loop-value-2)
+				set display item of {_e} to {_colors::2}
+		else:
+			delete {_delay}
+			set {_c} to 1
+			if {_a} is 3:
+				set {_c} to 3
+				add 90 to yaw of {_saveloc}
+			loop 4 times:
+				set {_loc} to {_saveloc}
+				set {_am} to 9
+				if loop-counter-2 is 2 or 4:
+					add 180 to yaw of {_loc}
+				if loop-counter-2 is 4:
+					set {_am} to 10
+				loop {_am} times:
+					add 1 to {_delay}
+					if loop-counter-2 is 3 or 4:
+						set {_num} to "-%(360/36)*loop-value-3%" parsed as number
+						set pitch of {_loc} to {_num}+10
+					else:
+						set pitch of {_loc} to (360/36)*loop-value-3
+					spawn item display at location 0.5*{_size} in front of {_loc}:
+						set {_e} to entity
+						set display scale of entity to vector(0, 0, 0)
+						set display brightness of entity to displayBrightness(15, 15)
+						sizeAnim(entity, 0.025, 0.09*{_size}, 0.025, {_delay})
+					set display item of {_e} to {_colors::%{_c}%}
+
+function showLoc(loc: location):
+	set pitch of {_loc} to 0
+	set yaw of {_loc} to 0
+	set {_colors::*} to blue concrete and lime concrete and red concrete
+	loop 3 times:
+		loop 3 times:
+			set {_w%loop-value-2%} to 0.025
+		set {_w%loop-value%} to 3
+		spawn item display at {_loc}:
+			set {_e} to entity
+			sizeAnim({_e}, {_w1}, {_w2}, {_w3})
+			set display scale of entity to vector(0, 0, 0)
+			set display brightness of entity to displayBrightness(15, 15)
+		set display item of {_e} to {_colors::%loop-value%}
+
+function sizeAnim(entity: entity, s1: number, s2: number, s3: number, delay: number = 0):
+	set {_wait} to "%{_delay}/3% ticks" parsed as timespan
+	wait {_wait}
+	set {_Bounce-In::*} to 0, 0.1, 0.25, 0.45, 0.7, 0.9, 1.02, 1.08, 1.1, 1.09, 1.07, 1.05, 1.03, 1.01 and 1
+	set interpolation duration of {_entity} to 1
+	loop {_Bounce-In::*}:
+		set interpolation start of {_entity} to 0
+		set display scale of {_entity} to vector(loop-value*{_s1}, loop-value*{_s2}, loop-value*{_s3})
+		wait 1 tick
+
+function fixLoc(loc: location) :: location:
+	add 0.5 to x-coords of {_loc}
+	add 0.5 to z-coords of {_loc}
+	return {_loc}
+
+function color(index: number) :: objects:
+	set {_normalized} to {_index} - 1
+	set {_section_size} to floor(60 / 6)
+	set {_section} to floor({_normalized} / {_section_size})
+	set {_position} to {_normalized} mod {_section_size}
+	set {_value} to floor(({_position} / {_section_size}) * 255)
+	if {_section} is 0:
+		return 255, {_value}, 0
+	else if {_section} is 1:
+		return 255 - {_value}, 255, 0
+	else if {_section} is 2:
+		return 0, 255, {_value}
+	else if {_section} is 3:
+		return 0, 255 - {_value}, 255
+	else if {_section} is 4:
+		return {_value}, 0, 255
+	else:
+		return 255, 0, 255 - {_value}
