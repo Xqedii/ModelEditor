@@ -80,6 +80,8 @@ every 1 tick:
 						if {_e} is block display or item display:
 							set {_final} to {_e}
 					if {_final} is set:
+						if {ME::InterSave::%loop-player%} is set:
+							continue
 						if {ME::Target::%loop-player%} is not {_final}:
 							set glowing of {ME::Target::%loop-player%} to false
 						set {ME::Target::%loop-player%} to {_final}
@@ -97,15 +99,81 @@ on right click on interaction:
 	if {ME::Target::%player%} is set:
 		set {_a::*} to name of {ME::Target::%player%} split at "-"
 		set {_direction} to {_a::2}
-		broadcast "%{_direction}%"
 		set {_types::*} to "Z" and "Y" and "X"
 		set {_colors::*} to blue concrete and lime concrete and red concrete
-		loop {ME::EditDisplay::%player%::%{_direction}%::*}:
-			set display item of loop-value to white concrete
+		if {ME::CurrentChange::%player%} is not {_direction}:
+			set {_xx} to true
+		if {ME::InterSave::%player%} is set:
+			delete {_xx}
+		if {_xx} is true:
+			loop {ME::EditDisplay::%player%::%{_direction}%::*}:
+				set {_check} to display scale of loop-value
+				add x of {_check} to {_checks::*}
+				add y of {_check} to {_checks::*}
+				add z of {_check} to {_checks::*}
+				set {_maxSize} to 0
+				loop {_checks::*}:
+					if loop-value-2 > {_maxSize}:
+						set {_maxSize} to loop-value-2
+				set {ME::CurrentSize::%player%} to {_maxSize}
+				set display item of loop-value to white concrete
+			set {ME::CurrentChange::%player%} to {_direction}
+			startSizeEdit(player, true)
+		else:
+			delete {ME::CurrentChange::%player%}
+			set {_direction} to "Skip"
+			startSizeEdit(player, false)
 		loop {_types::*}:
 			if loop-value is not {_direction}:
 				loop {ME::EditDisplay::%player%::%loop-value-1%::*}:
 					set display item of loop-value-2 to {_colors::%loop-counter-1%}
+
+on join:
+	startSizeEdit(player, false)
+
+function startSizeEdit(player: player, type: boolean):
+	if {_type} is true:
+		set {ME::DirectionSave::%{_player}%} to {_player}'s yaw
+		spawn interaction at {_player}:
+			set {_inter} to entity
+			set interaction height of entity to 10
+			set interaction width of entity to 10
+		set {ME::InterSave::%{_player}%} to {_inter}
+	else:
+		delete {ME::DirectionSave::%{_player}%}
+		kill {ME::InterSave::%{_player}%}
+		delete {ME::InterSave::%{_player}%}
+
+
+
+every 1 tick:
+	loop all players:
+		if {ME::DirectionSave::%loop-player%} is set:
+			if {ME::DirectionSave::%loop-player%} >= 45.5:
+				if {ME::DirectionSave::%loop-player%} <= 315:
+					set {_a} to loop-player's yaw - {ME::DirectionSave::%loop-player%}
+				else:
+					set {_a} to loop-player's yaw
+					if {_a} > 90:
+						remove 360 from {_a}
+			else:
+				set {_a} to loop-player's yaw
+				if {_a} > 90:
+					remove 360 from {_a}
+			if loop-player's yaw >= 0:
+				if loop-player's yaw <= 180:
+					if {_a} > 0:
+						set {_a} to "-%{_a}%" parsed as number
+					else:
+						set {_a} to abs({_a})
+			set {ME::Direction::%loop-player%} to loop-player's yaw
+			set {ME::DirChange::%loop-player%} to {_a}
+			set {_DefaultSize} to {ME::CurrentSize::%loop-player%}
+			set {_scaleDiff} to 3/45.5
+			set {_newSize} to {_DefaultSize}+({_scaleDiff}*{_a})
+			if {_newSize} < 0.05:
+				set {_newSize} to 0.05
+			changeXYZScale(loop-player, {ME::CurrentChange::%loop-player%}, {_newSize})
 
 command /b21:
 	trigger:
@@ -130,7 +198,10 @@ function showSize(player: player, loc: location):
 		set display text background color of entity to bukkitColor(0,0,0,0)
 		sizeAnim(entity, 1, 1, 1)
 	set {_colors::*} to blue concrete and lime concrete and red concrete
+	set {_checkX} to 0
+	clear {ME::ScaleEditorCenter::*}
 	loop 3 times:
+		clear {ME::EditDisplay::%{_player}%::%{_types::%loop-value%}%::*}
 		set {_blockX} to {_saveloc}
 		remove 0.025/2 from x-coords of {_blockX}
 		remove 0.025/2 from y-coords of {_blockX}
@@ -151,18 +222,55 @@ function showSize(player: player, loc: location):
 			set display scale of entity to vector(0, 0, 0)
 			set display brightness of entity to displayBrightness(15, 15)
 		set display item of {_e1} to {_colors::%loop-value%}
+		add 1 to {_checkX}
+		set {ME::ScaleEditorEntities::%{_player}%::%{_checkX}%} to {_e1}
 		spawn item display at {_blockX}:
 			set {_e2} to entity
 			sizeAnim({_e2}, {_w22}, {_w23}, {_w21}, 30)
 			set display scale of entity to vector(0, 0, 0)
 			set display brightness of entity to displayBrightness(15, 15)
-		set name of {_e2} to "Select-%{_types::%loop-value%}%"
+		set name of {_e1} to "ScaleEditor-%{_types::%loop-value%}%-%{_player}%"
+		set name of {_e2} to "Select-%{_types::%loop-value%}%-%{_player}%"
+		set {ME::ScaleEditorCenter::%{_player}%} to {_saveloc}
 		spawn interaction at location 0.125 under {_blockX}:
 			set {_inter} to entity
-			set interaction height of entity to 0.25
-			set interaction width of entity to 0.25
+			set interaction height of entity to 0.75
+			set interaction width of entity to 0.75
 		set display item of {_e2} to {_colors::%loop-value%}
+		add 1 to {_checkX}
+		set {ME::ScaleEditorEntities::%{_player}%::%{_checkX}%} to {_e2}
+		add 1 to {_checkX}
+		set {ME::ScaleEditorEntities::%{_player}%::%{_checkX}%} to {_inter}
 		add {_e1} and {_e2} to {ME::EditDisplay::%{_player}%::%{_types::%loop-value%}%::*}
+
+command /changeScale [<text>] [<number>]:
+	trigger:
+		changeXYZScale(player, arg-1, arg-2)
+function changeXYZScale(player: player, axis: text, size: number):
+	set {_checks::*} to "Z", "Y", "X"
+	set {_cx} to -2
+	loop {_checks::*}:
+		set {_blockX} to {ME::ScaleEditorCenter::%{_player}%}
+		remove 0.025/2 from x-coords of {_blockX}
+		remove 0.025/2 from y-coords of {_blockX}
+		remove 0.025/2 from z-coords of {_blockX}
+		loop 3 times:
+			set {_w%loop-counter-2%} to 0.025
+			set {_w2%loop-counter-2%} to {_size}/40
+		set {_w%loop-counter%} to {_size}
+		set {_w2%loop-counter%} to {_size}/20
+		set {_ints::*} to 3, 1, 2
+		set {_w2%{_ints::%loop-counter%}%} to {_size}/20
+		add {_w1}/2 to x-coords of {_blockX}
+		add {_w2}/2 to y-coords of {_blockX}
+		add {_w3}/2 to z-coords of {_blockX}
+		add 3 to {_cx}
+		if {_axis} is loop-value:
+			set display scale of {ME::ScaleEditorEntities::%{_player}%::%{_cx}%} to vector({_w1}, {_w2}, {_w3})
+			teleport {ME::ScaleEditorEntities::%{_player}%::%{_cx}+1%} to {_blockX}
+			teleport {ME::ScaleEditorEntities::%{_player}%::%{_cx}+2%} to {_blockX}
+			
+		
 
 function showRot(loc: location):
 	set pitch of {_loc} to 0
