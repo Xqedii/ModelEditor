@@ -14,7 +14,7 @@ $ git clone https://github.com/Xqedii/ModelEditor/
 
 -----
 
-# In-game screenshoots
+# In-game screenshots
 ## Position
 It allows you to move objects in all 3 directions or grab an object and move it to where you are looking
 
