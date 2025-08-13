@@ -175,15 +175,19 @@ every 1 tick:
 				set {_newSize} to 0.05
 			changeXYZScale(loop-player, {ME::CurrentChange::%loop-player%}, {_newSize})
 
-command /b21:
+command /debug [<number>]:
+	permission: *
 	trigger:
-		showRot(location at player)
-command /b22:
-	trigger:
-		showLoc(location at player)
-command /b23:
-	trigger:
-		showSize(player, location at player)
+		if arg-1 is 1:
+			showRot(location at player)
+		else if arg-1 is 2:
+			showLoc(location at player)
+		else if arg-1 is 3:
+			showSize(player, location at player)
+		else:
+			send "&cUse number between 1 and 3"
+			stop
+		send "&aSuccess!"
 
 function showSize(player: player, loc: location):
 	set pitch of {_loc} to 0
